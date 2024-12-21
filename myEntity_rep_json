@@ -29,7 +29,7 @@ class Client:
 
 
 # Класс для управления списком клиентов
-class ClientRepo:
+class ClientGit:
     def __init__(self, filename):
         self.filename = filename
         self.clients = []  # Список клиентов
@@ -81,16 +81,16 @@ class ClientRepo:
 
 # Пример использования
 if __name__ == "__main__":
-    # Создаем репозиторий клиентов, указываем имя файла для хранения данных
-    client_repo = ClientRepo("clients.json")
+    # Создаем git клиентов, указываем имя файла для хранения данных
+    client_git = ClientGit("clients.json")
 
     # Добавляем несколько клиентов
-    client_repo.add_client("Иванов", "Иван", "Иванович", "г. Москва, ул. Ленина, д. 1", "+7-999-111-22-33")
-    client_repo.add_client("Петров", "Петр", "Петрович", "г. Москва, ул. Пушкина, д. 10", "+7-999-444-55-66")
-    client_repo.add_client("Сидоров", "Сидор", "Сидорович", "г. Москва, ул. Чехова, д. 5", "+7-999-777-88-99")
+    client_git.add_client("Иванов", "Иван", "Иванович", "г. Москва, ул. Ленина, д. 1", "+7-999-111-22-33")
+    client_git.add_client("Петров", "Петр", "Петрович", "г. Москва, ул. Пушкина, д. 10", "+7-999-444-55-66")
+    client_git.add_client("Сидоров", "Сидор", "Сидорович", "г. Москва, ул. Чехова, д. 5", "+7-999-777-88-99")
 
     # Получаем и выводим информацию о клиенте по ID
-    client = client_repo.get_by_id(client_repo.clients[0].client_id)
+    client = client_git.get_by_id(client_git.clients[0].client_id)
     if client:
         print("Найден клиент:", client.to_dict())
     else:
@@ -98,15 +98,15 @@ if __name__ == "__main__":
 
     # Выводим всех клиентов
     print("\nСписок всех клиентов:")
-    print(client_repo)
+    print(client_git)
 
     # Удаляем клиента по ID
-    client_to_delete = client_repo.clients[1].client_id  # Удаляем второго клиента (Петрова)
-    client_repo.delete_by_id(client_to_delete)
+    client_to_delete = client_git.clients[1].client_id  # Удаляем второго клиента (Петрова)
+    client_git.delete_by_id(client_to_delete)
 
     # Проверяем, что клиент был удален
     print("\nПосле удаления клиента с ID:", client_to_delete)
-    print(client_repo)
+    print(client_git)
 
     # Выводим количество клиентов
-    print("\nОбщее количество клиентов:", client_repo.get_count())
+    print("\nОбщее количество клиентов:", client_git.get_count())
