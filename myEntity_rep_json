@@ -1,0 +1,78 @@
+import json  
+import uuid  
+
+# Класс для хранения данных о клиенте
+class Client:
+    def __init__(self, last_name, first_name, middle_name, address, phone):
+        self.client_id = str(uuid.uuid4())  # Генерация уникального ID для клиента
+        self.last_name = last_name
+        self.first_name = first_name
+        self.middle_name = middle_name
+        self.address = address
+        self.phone = phone
+
+    def to_dict(self):
+        """Преобразование объекта в словарь для сохранения в JSON."""
+        return {
+            "client_id": self.client_id,
+            "last_name": self.last_name,
+            "first_name": self.first_name,
+            "middle_name": self.middle_name,
+            "address": self.address,
+            "phone": self.phone
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        """Создание объекта клиента из словаря."""
+        return cls(data['last_name'], data['first_name'], data['middle_name'], data['address'], data['phone'])
+
+# Класс для управления списком клиентов
+class ClientRepo:
+    def __init__(self, filename):
+        self.filename = filename
+        self.clients = []  # Список клиентов
+        self.load_data()  # Загружаем данные из файла при создании объекта
+
+    def load_data(self):
+        """Загрузить данные из JSON-файла."""
+        try:
+            with open(self.filename, 'r', encoding='utf-8') as file:
+                data = json.load(file)  # Чтение данных из файла
+                # Преобразуем словари в объекты
+                self.clients = [Client.from_dict(client) for client in data]  
+        except FileNotFoundError:
+            self.clients = []  # Если файл не найден, просто создаем пустой список
+
+    def save_data(self):
+        """Сохранить список клиентов в JSON-файл."""
+        with open(self.filename, 'w', encoding='utf-8') as file:
+            # Преобразуем объекты клиентов в словари и записываем их в файл
+            json.dump([client.to_dict() for client in self.clients], file, indent=4)
+
+    def add_client(self, last_name, first_name, middle_name, address, phone):
+        """Добавить нового клиента в список."""
+        new_client = Client(last_name, first_name, middle_name, address, phone)
+        self.clients.append(new_client)  # Добавляем нового клиента в список
+        self.save_data()  # Сохраняем данные в файл
+
+    def get_by_id(self, client_id):
+        """Найти клиента по ID."""
+        for client in self.clients:
+            if client.client_id == client_id:  # Ищем клиента с таким ID
+                return client
+        return None  # Если не нашли, возвращаем None
+
+    def delete_by_id(self, client_id):
+        """Удалить клиента по ID."""
+        # Оставляем в списке только тех клиентов, у которых другой ID
+        self.clients = [client for client in self.clients if client.client_id != client_id]
+        self.save_data()  # Сохраняем изменения в файл
+
+    def get_count(self):
+        """Получить количество клиентов."""
+        return len(self.clients)  # Возвращаем длину списка клиентов
+
+    def __str__(self):
+        """Вывести информацию о всех клиентах в виде строки."""
+        return "\n".join([str(client.to_dict()) for client in self.clients])  # Форматируем список клиентов как строку
