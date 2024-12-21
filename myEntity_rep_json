@@ -1,5 +1,5 @@
-import json  
-import uuid  
+import json
+import uuid
 
 # Класс для хранения данных о клиенте
 class Client:
@@ -26,6 +26,7 @@ class Client:
     def from_dict(cls, data):
         """Создание объекта клиента из словаря."""
         return cls(data['last_name'], data['first_name'], data['middle_name'], data['address'], data['phone'])
+
 
 # Класс для управления списком клиентов
 class ClientRepo:
@@ -75,4 +76,37 @@ class ClientRepo:
 
     def __str__(self):
         """Вывести информацию о всех клиентах в виде строки."""
-        return "\n".join([str(client.to_dict()) for client in self.clients])  # Форматируем список клиентов как строку
+        return "\n".join([str(client.to_dict()) for client in self.clients])
+
+
+# Пример использования
+if __name__ == "__main__":
+    # Создаем репозиторий клиентов, указываем имя файла для хранения данных
+    client_repo = ClientRepo("clients.json")
+
+    # Добавляем несколько клиентов
+    client_repo.add_client("Иванов", "Иван", "Иванович", "г. Москва, ул. Ленина, д. 1", "+7-999-111-22-33")
+    client_repo.add_client("Петров", "Петр", "Петрович", "г. Москва, ул. Пушкина, д. 10", "+7-999-444-55-66")
+    client_repo.add_client("Сидоров", "Сидор", "Сидорович", "г. Москва, ул. Чехова, д. 5", "+7-999-777-88-99")
+
+    # Получаем и выводим информацию о клиенте по ID
+    client = client_repo.get_by_id(client_repo.clients[0].client_id)
+    if client:
+        print("Найден клиент:", client.to_dict())
+    else:
+        print("Клиент не найден")
+
+    # Выводим всех клиентов
+    print("\nСписок всех клиентов:")
+    print(client_repo)
+
+    # Удаляем клиента по ID
+    client_to_delete = client_repo.clients[1].client_id  # Удаляем второго клиента (Петрова)
+    client_repo.delete_by_id(client_to_delete)
+
+    # Проверяем, что клиент был удален
+    print("\nПосле удаления клиента с ID:", client_to_delete)
+    print(client_repo)
+
+    # Выводим количество клиентов
+    print("\nОбщее количество клиентов:", client_repo.get_count())
