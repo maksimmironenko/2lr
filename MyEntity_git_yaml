@@ -1,0 +1,108 @@
+import yaml
+import uuid
+
+# Класс для хранения данных о клиенте
+class Client:
+    def __init__(self, last_name, first_name, middle_name, address, phone):
+        self.client_id = str(uuid.uuid4())  # Генерация уникального ID для клиента
+        self.last_name = last_name
+        self.first_name = first_name
+        self.middle_name = middle_name
+        self.address = address
+        self.phone = phone
+
+    def to_dict(self):
+        """Преобразование объекта в словарь для сохранения в YAML."""
+        return {
+            "client_id": self.client_id,
+            "last_name": self.last_name,
+            "first_name": self.first_name,
+            "middle_name": self.middle_name,
+            "address": self.address,
+            "phone": self.phone
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        """Создание объекта клиента из словаря."""
+        return cls(data['last_name'], data['first_name'], data['middle_name'], data['address'], data['phone'])
+
+
+# Класс для управления списком клиентов
+class ClientRepo:
+    def __init__(self, filename):
+        self.filename = filename
+        self.clients = []  # Список клиентов
+        self.load_data()  # Загружаем данные из файла
+
+    def load_data(self):
+        """Загрузить данные из YAML-файла."""
+        try:
+            with open(self.filename, 'r', encoding='utf-8') as file:
+                data = yaml.safe_load(file) or []  # Чтение данных из файла
+                self.clients = [Client.from_dict(item) for item in data]  # Преобразуем в объекты
+        except FileNotFoundError:
+            self.clients = []  # Если файл не найден, создаем пустой список
+
+    def save_data(self):
+        """Сохранить данные в YAML-файл."""
+        with open(self.filename, 'w', encoding='utf-8') as file:
+            yaml.safe_dump([client.to_dict() for client in self.clients], file, allow_unicode=True)
+
+    def add_client(self, last_name, first_name, middle_name, address, phone):
+        """Добавить нового клиента."""
+        new_client = Client(last_name, first_name, middle_name, address, phone)
+        self.clients.append(new_client)
+        self.save_data()
+
+    def get_by_id(self, client_id):
+        """Найти клиента по ID."""
+        for client in self.clients:
+            if client.client_id == client_id:
+                return client
+        return None  # Если не нашли клиента
+
+    def delete_by_id(self, client_id):
+        """Удалить клиента по ID."""
+        self.clients = [client for client in self.clients if client.client_id != client_id]
+        self.save_data()
+
+    def get_count(self):
+        """Получить количество клиентов."""
+        return len(self.clients)
+
+    def __str__(self):
+        """Вывести информацию о всех клиентах."""
+        return "\n".join([str(client.to_dict()) for client in self.clients])
+
+
+# Примеры использования
+if __name__ == "__main__":
+    # Создаём репозиторий клиентов (заменено repo -> git)
+    git = ClientRepo("clients.yaml")
+
+    # Добавление клиентов
+    git.add_client("Иванов", "Иван", "Иванович", "Москва", "1234567890")
+    git.add_client("Петров", "Петр", "Петрович", "Санкт-Петербург", "0987654321")
+
+    # Вывод всех клиентов
+    print("Список всех клиентов:")
+    print(git)
+
+    # Получение клиента по ID
+    client_id_to_find = git.clients[0].client_id  # Берём ID первого клиента
+    found_client = git.get_by_id(client_id_to_find)
+    if found_client:
+        print("\nНайден клиент по ID:")
+        print(found_client.to_dict())
+    else:
+        print("\nКлиент с таким ID не найден.")
+
+    # Удаление клиента по ID
+    client_id_to_delete = git.clients[1].client_id  # Берём ID второго клиента
+    git.delete_by_id(client_id_to_delete)
+    print("\nСписок клиентов после удаления:")
+    print(git)
+
+    # Количество клиентов
+    print("\nКоличество клиентов:", git.get_count())
