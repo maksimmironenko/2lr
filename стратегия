@@ -1,0 +1,103 @@
+import json
+import yaml
+
+# Базовый класс
+class MyEntityBase:
+    def __init__(self, file_name):
+        self.file_name = file_name  #  указывает с каким файлом работает/имя файла
+        self.data = []  #  записваются/хранит Список данных
+        self.load_from_file()  #  читает/Загружаеь данных из файла в self data
+
+    def load_from_file(self):
+        pass  # заглушка чтобы реализовать чтения отдельно в json и yaml
+
+    def save_to_file(self):
+        pass  # заглушка чтобы реализовать pfgbcm lfyys[ отдельно в json и yaml
+
+    def get_by_id(self, entity_id): # идентификатор обьекта который нужно найти
+        # Найти объект по ID
+        for obj in self.data:
+            if obj["id"] == entity_id:
+                return obj
+        return None
+
+    def get_k_n_short_list(self, page_number, kolvo):
+        # Получить список объектов с определённой страницы
+        start = (page_number - 1) * kolvo
+        end = start + kolvo
+        return self.data[start:end]
+
+    def sort_by_field(self, field_name):
+        # Сортировка по указанному полю
+        self.data.sort(key=lambda x: x[field_name]) # key парамет как вычислять значения для сортировки каждого элемента, лябда функция принимающая параметр
+
+    def add_object(self, new_object): # обьекто который мы добавляем в список данных
+        # Добавить объект
+        new_id = max([obj["id"] for obj in self.data], default=0) + 1 # forеребирает каждый обьект в списке, создается список только с id и возвращается максимальный
+        new_object["id"] = new_id
+        self.data.append(new_object) # добавляет в конец списка новый обьект
+        self.save_to_file()
+
+    def replace_by_id(self, entity_id, new_object):
+        # Заменить объект по ID
+        for i, obj in enumerate(self.data): # enumerate возвращает индекс и обьект для каждого элемента
+            if obj["id"] == entity_id:
+                new_object["id"] = entity_id
+                self.data[i] = new_object
+                self.save_to_file()
+                return True
+        return False
+
+    def delete_by_id(self, entity_id):
+        # Удалить объект по ID
+        self.data = [obj for obj in self.data if obj["id"] != entity_id]    # если id соответсвует то мы удаляем этот обьект
+        self.save_to_file()
+
+    def get_count(self):
+        # Получить количество объектов
+        return len(self.data)
+
+
+# Класс для работы с JSON
+class MyEntityJson(MyEntityBase):
+    def load_from_file(self):
+        # Чтение данных из JSON
+        try:
+            with open(self.file_name, "r", encoding="utf-8") as file:
+                self.data = json.load(file)
+        except:
+            self.data = []
+
+    def save_to_file(self):
+        # Запись данных в JSON
+        with open(self.file_name, "w", encoding="utf-8") as file:
+            json.dump(self.data, file, indent=4, ensure_ascii=False) #json.dump функция которая преобразует обьект питона в json
+
+
+# Класс для работы с YAML
+class MyEntityYaml(MyEntityBase):
+    def load_from_file(self):
+        # Чтение данных из YAML
+        try:
+            with open(self.file_name, "r", encoding="utf-8") as file:
+                self.data = yaml.safe_load(file) or []
+        except:
+            self.data = []
+
+    def save_to_file(self):
+        # Запись данных в YAML
+        with open(self.file_name, "w", encoding="utf-8") as file:
+            yaml.dump(self.data, file, default_flow_style=False, allow_unicode=True) # default определяет как будет выглядить структура False-более читаемый для человека True-все в 1 строку
+# allow_unicode=True символы unicode записанны как есть а не непонятно
+
+# Пример использования
+if __name__ == "__main__":
+    # Работа с JSON
+    json_repo = MyEntityJson("entities.json")
+    json_repo.add_object({"name": "Объект JSON", "value": 100})
+    print("JSON данные:", json_repo.data)
+
+    # Работа с YAML
+    yaml_repo = MyEntityYaml("entities.yaml")
+    yaml_repo.add_object({"name": "Объект YAML", "value": 200})
+    print("YAML данные:", yaml_repo.data)
