@@ -1,0 +1,99 @@
+import json
+
+class MyEntity_rep_json:
+    def __init__(self, file_name):
+        self.file_name = file_name  # указывает с каким файлом работает json класс
+        self.data = []  # записваются/хранит Список данных
+        self.load_from_file()  # читает/загружает данные из json в self data
+
+    # Чтение всех значений из файла
+    def load_from_file(self):
+        try:
+            with open(self.file_name, "r", encoding="utf-8") as file:
+                self.data = json.load(file)  # записываем данные в json, сли файл открыт успешно
+        except:
+            self.data = []  # Если файла нет или выдал ошибку, создаём пустой список данных
+
+    # Запись всех значений в файл
+    def save_to_file(self):
+        with open(self.file_name, "w", encoding="utf-8") as file:
+            json.dump(self.data, file, indent=4, ensure_ascii=False)  # преобразует обьект пайтон в json формат и записывает его в файл
+
+    # Получить объект по ID
+    def get_by_id(self, entity_id):#id илентификатор обькта который нам надо найти в списке self data
+        for client in self.data:
+            if client["id"] == entity_id:  # Если ID совпадает
+                return client
+        return None  # Если объект не найден
+
+    # Получить список объектов (по странице k и n объектов)
+    def get_k_n_short_list(self, page_number, kolvo):
+        start = (page_number - 1) * kolvo
+        end = start + kolvo
+        return self.data[start:end]  # Возвращаем часть списка
+
+    # Сортировать элементы по выбранному полю
+    def sort_by_field(self, field_name):#сортировка по выбраному полю
+        self.data.sort(key=lambda x: x[field_name])  # Сортируем изменяя его порядок по указанному полю
+
+    # Добавить объект в список
+    def add_object(self, new_object):
+        new_id = max([obj["id"] for obj in self.data], default=0) + 1  # Генерируем новый ID из максимального предыдущего
+        new_object["id"] = new_id
+        self.data.append(new_object)  # Добавляет новый объект в конец
+        self.save_to_file()  # Сохраняем изменения
+
+    # Заменить элемент по ID
+    def replace_by_id(self, entity_id, new_object): #идентефикатор обьекта который нужно заменить и соответсвенно новый обьект
+        for i, obj in enumerate(self.data):
+            if obj["id"] == entity_id:  # Если ID совпадает
+                new_object["id"] = entity_id  # Сохраняем ID
+                self.data[i] = new_object  # Заменяем объект
+                self.save_to_file() # охраняем изменеия в файл
+                return True
+        return False  # Если объект не найден
+
+    # Удалить элемент по ID
+    def delete_by_id(self, entity_id):
+        self.data = [client for client in self.data if client["id"] != entity_id]  # если id соответсвует то мы удаляем этот обьект
+        self.save_to_file()  # Сохраняем изменения
+
+    # Получить количество объектов
+    def get_count(self):
+        return len(self.data)  # Возвращаем длину списка
+
+
+# Пример использования
+if __name__ == "__main__":
+    file_name = "entities.json"
+    git = MyEntity_rep_json(file_name)  # Создаём объект класса
+
+    # Чтение данных
+    print("Данные из файла:", git.data)
+
+    # Добавление нового объекта
+    new_obj = {"name": "Новый объект", "value": 100}
+    git.add_object(new_obj)
+    print("После добавления:", git.data)
+
+    # Получить объект по ID
+    print("Объект с ID 1:", git.get_by_id(1))
+
+    # Удалить объект по ID
+    git.delete_by_id(1)
+    print("После удаления объекта с ID 1:", git.data)
+
+    # Количество объектов
+    print("Количество объектов:", git.get_count())
+
+    # Сортировка по полю "name"
+    git.sort_by_field("name")
+    print("После сортировки:", git.data)
+
+    # Замена объекта
+    updated_obj = {"name": "Обновленный объект", "value": 200}
+    git.replace_by_id(2, updated_obj)
+    print("После обновления объекта с ID 2:", git.data)
+
+    # Получить список объектов (например, 2-я страница по 3 элемента)
+    print("Вторые 3 объекта:", git.get_k_n_short_list(2, 3))
