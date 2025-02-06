@@ -1,0 +1,151 @@
+import mysql.connector
+import json
+import yaml
+
+# Базовый класс
+class MyEntityBase:
+    def __init__(self, file_name=None, db_config=None):
+        self.file_name = file_name  # имя файла или конфигурация для БД
+        self.data = []  # данные
+        if file_name:
+            self.load_from_file()  # Загружаем из файла
+        if db_config:
+            self.db_repository = MyEntityDBAdapter(db_config)  # Адаптер для работы с БД
+        else:
+            self.db_repository = None
+
+    def load_from_file(self):
+        if self.file_name.endswith('.json'):
+            with open(self.file_name, 'r', encoding='utf-8') as file:
+                self.data = json.load(file)
+        elif self.file_name.endswith('.yaml'):
+            with open(self.file_name, 'r', encoding='utf-8') as file:
+                self.data = yaml.safe_load(file)
+
+    def save_to_file(self):
+        if self.file_name.endswith('.json'):
+            with open(self.file_name, 'w', encoding='utf-8') as file:
+                json.dump(self.data, file, ensure_ascii=False, indent=4) # ens- символы надо сохранять так как они есть inde- отступы в файле
+        elif self.file_name.endswith('.yaml'):
+            with open(self.file_name, 'w', encoding='utf-8') as file:
+                yaml.dump(self.data, file, allow_unicode=True) # allo-разрешает сохранение символов в юникоде записываются как есть
+
+    def get_by_id(self, entity_id):
+        if self.db_repository: # если есть подключение к базе данных
+            return self.db_repository.get_by_id(entity_id)
+        for obj in self.data:
+            if obj["id"] == entity_id:
+                return obj
+        return None
+
+    def get_k_n_short_list(self, page_number, kolvo):
+        if self.db_repository:
+            return self.db_repository.get_k_n_short_list(page_number, kolvo)
+        start = (page_number - 1) * kolvo
+        end = start + kolvo
+        return self.data[start:end]
+
+    def sort_by_field(self, field_name):
+        self.data.sort(key=lambda x: x[field_name])
+
+    def add_object(self, new_object):
+        if self.db_repository:
+            return self.db_repository.add_object(new_object)
+        new_id = max([obj["id"] for obj in self.data], default=0) + 1
+        new_object["id"] = new_id
+        self.data.append(new_object)
+        return new_id
+
+    def replace_by_id(self, entity_id, new_object):
+        if self.db_repository:
+            return self.db_repository.replace_by_id(entity_id, new_object)
+        for i, obj in enumerate(self.data):
+            if obj["id"] == entity_id:
+                new_object["id"] = entity_id
+                self.data[i] = new_object
+                return True
+        return False
+
+    def delete_by_id(self, entity_id):
+        if self.db_repository:
+            return self.db_repository.delete_by_id(entity_id)
+        self.data = [obj for obj in self.data if obj["id"] != entity_id] # если id соответсвует то мы удаляем этот обьект
+        return True
+
+    def get_count(self):
+        if self.db_repository:
+            return self.db_repository.get_count()
+        return len(self.data)
+
+
+# Адаптер для работы с базой данных
+class MyEntityDBAdapter:
+    def __init__(self, db_config):
+        self.db_config = db_config
+        self.connection = mysql.connector.connect(**db_config) # обект соеденения с бд
+        self.cursor = self.connection.cursor(dictionary=True) # нужен для выполнения запросов и обработки результатов
+
+    def get_by_id(self, entity_id):
+        query = "SELECT * FROM my_entities WHERE id = %s"
+        self.cursor.execute(query, (entity_id,))
+        return self.cursor.fetchone()
+
+    def get_k_n_short_list(self, page_number, kolvo):
+        start = (page_number - 1) * kolvo
+        query = "SELECT * FROM my_entities LIMIT %s, %s"
+        self.cursor.execute(query, (start, kolvo))
+        return self.cursor.fetchall()
+
+    def add_object(self, new_object):
+        query = "INSERT INTO my_entities (name, value) VALUES (%s, %s)"
+        self.cursor.execute(query, (new_object['name'], new_object['value']))
+        self.connection.commit()
+        return self.cursor.lastrowid
+
+    def replace_by_id(self, entity_id, new_object):
+        query = "UPDATE my_entities SET name = %s, value = %s WHERE id = %s"
+        self.cursor.execute(query, (new_object['name'], new_object['value'], entity_id))
+        self.connection.commit()
+        return self.cursor.rowcount > 0
+
+    def delete_by_id(self, entity_id):
+        query = "DELETE FROM my_entities WHERE id = %s"
+        self.cursor.execute(query, (entity_id,))
+        self.connection.commit()
+        return self.cursor.rowcount > 0
+
+    def get_count(self):
+        query = "SELECT COUNT(*) AS count FROM my_entities"
+        self.cursor.execute(query)
+        result = self.cursor.fetchone()
+        return result['count'] if result else 0
+
+    def close(self):
+        self.cursor.close()
+        self.connection.close()
+
+
+# Пример использования
+if __name__ == "__main__":
+    db_config = {
+        'user': 'root',
+        'password': '111111',
+        'host': 'localhost',
+        'database': 'your_database'
+    }
+
+    # Работа с БД
+    entity_repository_db = MyEntityBase(db_config=db_config)
+    new_object = {"name": "Объект DB", "value": 100}
+    new_id = entity_repository_db.add_object(new_object)
+    print(f"Добавлен объект с ID: {new_id}")
+    print("Объект по ID:", entity_repository_db.get_by_id(new_id))
+
+    # Работа с обычным репозиторием
+    entity_repository_file = MyEntityBase(file_name="entities.json")
+    new_object_file = {"name": "Объект JSON", "value": 200}
+    new_id_file = entity_repository_file.add_object(new_object_file)
+    print(f"Добавлен объект с ID: {new_id_file}")
+    print("Объект по ID:", entity_repository_file.get_by_id(new_id_file))
+
+    entity_repository_db.db_repository.close()
