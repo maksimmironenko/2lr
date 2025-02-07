@@ -1,16 +1,12 @@
 import mysql.connector
-
 class Database: # Класс для работы с базой данных (паттерн Одиночка)
-
-    _instance = None  # переменная для хранения единственного экземпляра класса
-
+    instance = None  # переменная для хранения единственного экземпляра класса
     def __new__(cls, db_config): # оздаем обьект
-        if cls._instance is None:
-            cls._instance = super(Database, cls).__new__(cls) # создаем обьект класса database и сохраняем его instanse
-            cls._instance.connection = mysql.connector.connect(**db_config) # подключаемся к базе данных и сохраняем соединение
-            cls._instance.cursor = cls._instance.connection.cursor(dictionary=True) # создаем курсор для sql - запросов
-        return cls._instance
-
+        if cls.instance is None:
+            cls.instance = super(Database, cls).__new__(cls) # создаем обьект класса database и сохраняем
+            cls.instance.connection = mysql.connector.connect(**db_config) # подключаемся к базе данных и сохраняем соединение
+            cls.instance.cursor = cls.instance.connection.cursor(dictionary=True) # создаем курсор для sql - запросов
+        return cls.instance
     def execute_query(self, query, params=None, fetch_one=False, fetch_all=False): # создает функцию она выполняет sql запросы в бд
         self.cursor.execute(query, params or ())  # передает запрос в бд
         if fetch_one:
@@ -18,50 +14,37 @@ class Database: # Класс для работы с базой данных (п�
         if fetch_all:
             return self.cursor.fetchall()  # возвращает все найденные строки
         self.connection.commit()  # выполняется сохранения изменений
-
     def close(self):
         self.cursor.close() #закрывает курсор
         self.connection.close() #закрывает соединение с бд
-
-
 class MyEntityRepository: # класс для работы с таблицей
-
-
     def __init__(self, db):
         self.db = db  # Делегируем работу с БД классу Database
-
     def get_by_id(self, entity_id): # Получить объект по ID
         query = "SELECT * FROM my_entities WHERE id = %s" # ищет подходящий айди
         return self.db.execute_query(query, (entity_id,), fetch_one=True)
-
     def get_k_n_short_list(self, page_number, kolvo):  # Получить список объектов с определённой страницы
         start = (page_number - 1) * kolvo
         query = "SELECT * FROM my_entities LIMIT %s, %s" #выбираем все столбцы из таблицы 1) нач индкс 2)кол-во строк
         return self.db.execute_query(query, (start, kolvo), fetch_all=True)  # возвращает строки соответсвующие запросу
-
     def add_object(self, new_object):
         """Добавить объект"""
         query = "INSERT INTO my_entities (name, value) VALUES (%s, %s)"  # запрос вставляющий в таблицу новый обьект в таблицу
         self.db.execute_query(query, (new_object['name'], new_object['value'])) # запрос на добавление данных в таблицу
         return self.db.cursor.lastrowid  # Получаем ID добавленной записи
-
     def replace_by_id(self, entity_id, new_object):
         """Обновить объект по ID"""
         query = "UPDATE my_entities SET name = %s, value = %s WHERE id = %s"  # запрос который обновляет поля в тпблице
         self.db.execute_query(query, (new_object['name'], new_object['value'], entity_id))  # вызов выполняющий запрос подставленными значениями
         return self.db.cursor.rowcount > 0
-
     def delete_by_id(self, entity_id): # Удалить объект по ID
         query = "DELETE FROM my_entities WHERE id = %s"
         self.db.execute_query(query, (entity_id,)) # выполняет запрос на удаление
         return self.db.cursor.rowcount > 0
-
     def get_count(self): # Получить количество объектов
         query = "SELECT COUNT(*) AS count FROM my_entities" # считает количество записей в таблице
         result = self.db.execute_query(query, fetch_one=True) # выполняет этот запрос
         return result["count"] if result else 0 # содержит  количество записей в поле count
-
-
 if __name__ == "__main__":
     db_config = {
         'user': 'root',
@@ -69,33 +52,25 @@ if __name__ == "__main__":
         'host': 'localhost',
         'database': 'your_database'
     }
-
     db = Database(db_config)  # Создаем соединение с БД
     repository = MyEntityRepository(db)  # Репозиторий получает объект базы данных
-
     # Добавляем объект
     new_object = {'name': 'Объект 1', 'value': 100}
     new_id = repository.add_object(new_object)
     print(f"Добавлен объект с ID: {new_id}")
-
     # Получаем объект по ID
     obj = repository.get_by_id(new_id)
     print("Полученный объект:", obj)
-
     # Получаем список объектов (2-я страница, 5 объектов на странице)
     objects = repository.get_k_n_short_list(2, 5)
     print("Список объектов:", objects)
-
     # Обновляем объект
     updated_object = {'name': 'Обновленный объект', 'value': 150}
     repository.replace_by_id(new_id, updated_object)
-
     # Удаляем объект
     repository.delete_by_id(new_id)
-
     # Получаем количество объектов
     count = repository.get_count()
     print("Количество объектов:", count)
-
     # Закрываем соединение
     db.close()
